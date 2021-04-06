@@ -1,0 +1,170 @@
+---
+title: "<span style='font-size: 48px'>Practical_ML_Project</span>"
+author: "<span style='font-size: 24px'>Henry CY Wong</span>"
+date: "<span style='font-size: 24px'>2021-04-06</span>"
+output:
+    html_document:
+            css: style.css
+            keep_md: true
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+&nbsp;
+&nbsp;
+
+## 1. Introduction
+
+
+
+
+&nbsp;
+&nbsp;
+
+## 2. Data Preparation and Cleaning
+
+The datasets will be loaded as shown below:
+
+```{r load_dataset}
+dataset_train <- read.csv('./pml-training.csv', header = TRUE, na.strings = c("NA", "#DIV/0!", ""))
+dataset_validate <- read.csv('./pml-testing.csv', header = TRUE, na.strings = c("NA", "#DIV/0!", ""))
+```
+
+&nbsp;
+
+The dimension of the dataset is:
+
+```{r show_dim}
+dim(dataset_train)
+```
+
+&nbsp;
+
+The columns of the dataset are:
+
+```{r show_col}
+names(dataset_train)
+```
+
+&nbsp;
+
+Data are
+
+```{r show_data}
+str(dataset_train)
+```
+
+&nbsp;
+
+The dataset will be cleaned as shown below:
+
+```{r clean_data}
+data_train <- dataset_train[,colSums(is.na(dataset_train)) == 0]
+data_validate <- dataset_validate[,colSums(is.na(dataset_validate)) == 0]
+data_train <- data_train[,-c(1:7)]
+data_validate <- data_validate[,-c(1:7)]
+```
+
+&nbsp;
+&nbsp;
+
+## 3. Model Building
+
+The following libraries will be loaded as shown below:
+
+```{r load_lib}
+library("caret")
+library("e1071")
+library("gbm")
+library("randomForest")
+```
+
+&nbsp;
+
+The original train dataset, **data_train**, will be partitioned into 2 datasets which are train dataset and test dataset, respectively, for model training and testing as shown below:
+
+```{r data_partition}
+set.seed(20210101)
+samples_partition <- createDataPartition(y=data_train$classe, p=0.75, list=FALSE)
+samples_train <- data_train[samples_partition,]
+samples_test <- data_train[-samples_partition,]
+```
+
+&nbsp;
+
+Models Decision Trees, Gradient Boosting Machines and Random Forests are considered and 3-fold cross validation will be used.
+
+```{r set_3fold_cv}
+train_control <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
+```
+
+&nbsp;
+
+### 3.1 Decision Trees
+
+The Decision Trees model will be trained, predicted and tested as follows:
+
+```{r train_dt, cache=FALSE, results="hide"}
+model_dt <- train(classe ~ ., data = samples_train, trControl = train_control, method = "rpart")
+predict_dt <- predict(model_dt, newdata = samples_test)
+cm_dt <- confusionMatrix(predict_dt, factor(samples_test$classe))
+```
+```{r showw_cm_dt}
+cm_dt
+```
+
+&nbsp;
+
+### 3.2 Gradient Boosting Machines
+
+The Gradient Boosting Machines will be trained, predicted and tested as follows:
+
+```{r train_gbm, cache=FALSE, results="hide"}
+model_gbm <- train(classe ~ ., data = samples_train, trControl = train_control, method = "gbm")
+predict_gbm <- predict(model_gbm, newdata = samples_test)
+cm_gbm <- confusionMatrix(predict_gbm, factor(samples_test$classe))
+```
+```{r show_cm_gbm}
+cm_gbm
+```
+
+&nbsp;
+
+### 3.3 Random Forests
+
+The Random Forests will be trained, predicted and tested as follows:
+
+```{r train_rf, cache=FALSE, results="hide"}
+model_rf <- train(classe ~ ., data = samples_train, trControl = train_control, method = "rf")
+predict_rf <- predict(model_rf, newdata = samples_test)
+cm_rf <- confusionMatrix(predict_rf, factor(samples_test$classe))
+```
+```{r show_cm_rf}
+cm_rf
+```
+
+&nbsp;
+
+### 3.4 Comparison of the Model's Accuracy
+
+```{r compare_results}
+model_accuracy <- data.frame(Model = c("Decision Trees", "Gradient Boosting Machines", "Random Forests"), 
+                             Accuracy = rbind(cm_dt$overall[1], cm_gbm$overall[1], cm_rf$overall[1]))
+print(model_accuracy)
+```
+
+
+&nbsp;
+&nbsp;
+
+## 4. Conclusion
+
+```{r predict_validate_dataset}
+predict_validate <- predict(model_rf, newdata = data_validate)
+predict_validate
+```
+
+&nbsp;
+&nbsp;
