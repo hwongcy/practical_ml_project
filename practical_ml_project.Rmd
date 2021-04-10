@@ -1,7 +1,7 @@
 ---
 title: "<span style='font-size: 48px'>Practical_ML_Project</span>"
 author: "<span style='font-size: 24px'>Henry CY Wong</span>"
-date: "<span style='font-size: 24px'>2021-04-06</span>"
+date: "<span style='font-size: 24px'>2021-04-10</span>"
 output:
     html_document:
             css: style.css
@@ -17,8 +17,7 @@ knitr::opts_chunk$set(echo = TRUE)
 
 ## 1. Introduction
 
-
-
+With using devices such as *Jawbone Up*, *Nike FuelBand*, and *Fitbit*, etc., a large amount of data about personal activities could be collected for health improvement and exerise patterns/behavior identification, etc. However, it is common to focus on how *much* of  a particular activity people do instead of how *well* they do. Thus, the objective of this project is to predict the manner in which they did the exercise by using the **classe** variable in the given training dataset and to use the prediction model to predict 20 different test cases in the given testing datasets.
 
 &nbsp;
 &nbsp;
@@ -32,39 +31,36 @@ dataset_train <- read.csv('./pml-training.csv', header = TRUE, na.strings = c("N
 dataset_validate <- read.csv('./pml-testing.csv', header = TRUE, na.strings = c("NA", "#DIV/0!", ""))
 ```
 
-&nbsp;
-
 The dimension of the dataset is:
 
 ```{r show_dim}
 dim(dataset_train)
 ```
 
-&nbsp;
-
-The columns of the dataset are:
+The columns of the training dataset are:
 
 ```{r show_col}
 names(dataset_train)
 ```
 
-&nbsp;
+Columns with *all* values **NA** will be removed as shown below.
 
-Data are
-
-```{r show_data}
-str(dataset_train)
-```
-
-&nbsp;
-
-The dataset will be cleaned as shown below:
-
-```{r clean_data}
+```{r remove_col_with_na}
 data_train <- dataset_train[,colSums(is.na(dataset_train)) == 0]
 data_validate <- dataset_validate[,colSums(is.na(dataset_validate)) == 0]
+```
+
+The first 7 columns will be removed as shown below because they are not related to the model building.
+
+```{r remove_1st_7_col}
 data_train <- data_train[,-c(1:7)]
 data_validate <- data_validate[,-c(1:7)]
+```
+
+Dataset for model building/training after data cleaning becomes:
+
+```{r show_data}
+str(data_train)
 ```
 
 &nbsp;
@@ -72,13 +68,10 @@ data_validate <- data_validate[,-c(1:7)]
 
 ## 3. Model Building
 
-The following libraries will be loaded as shown below:
+The library **caret** will be loaded as shown below for model building:
 
 ```{r load_lib}
 library("caret")
-library("e1071")
-library("gbm")
-library("randomForest")
 ```
 
 &nbsp;
@@ -94,7 +87,7 @@ samples_test <- data_train[-samples_partition,]
 
 &nbsp;
 
-Models Decision Trees, Gradient Boosting Machines and Random Forests are considered and 3-fold cross validation will be used.
+Models Decision Tree, Generalized Boosted Regression Model and Random Forest are considered and 3-fold cross validation will be used.
 
 ```{r set_3fold_cv}
 train_control <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
@@ -102,12 +95,12 @@ train_control <- trainControl(method = "cv", number = 3, verboseIter = FALSE)
 
 &nbsp;
 
-### 3.1 Decision Trees
+### 3.1 Decision Tree
 
-The Decision Trees model will be trained, predicted and tested as follows:
+The Decision Tree model will be trained, predicted and tested as follows:
 
-```{r train_dt, cache=FALSE, results="hide"}
-model_dt <- train(classe ~ ., data = samples_train, trControl = train_control, method = "rpart")
+```{r train_dt, cache=TRUE, results="hide"}
+model_dt <- train(classe ~ ., data = samples_train, trControl = train_control, tuneLength = 5, method = "rpart")
 predict_dt <- predict(model_dt, newdata = samples_test)
 cm_dt <- confusionMatrix(predict_dt, factor(samples_test$classe))
 ```
@@ -117,12 +110,12 @@ cm_dt
 
 &nbsp;
 
-### 3.2 Gradient Boosting Machines
+### 3.2 Generalized Boosted Regression Model
 
-The Gradient Boosting Machines will be trained, predicted and tested as follows:
+The Generalized Boosted Regression Model will be trained, predicted and tested as follows:
 
-```{r train_gbm, cache=FALSE, results="hide"}
-model_gbm <- train(classe ~ ., data = samples_train, trControl = train_control, method = "gbm")
+```{r train_gbm, cache=TRUE, results="hide"}
+model_gbm <- train(classe ~ ., data = samples_train, trControl = train_control, tuneLength = 5, method = "gbm")
 predict_gbm <- predict(model_gbm, newdata = samples_test)
 cm_gbm <- confusionMatrix(predict_gbm, factor(samples_test$classe))
 ```
@@ -132,12 +125,12 @@ cm_gbm
 
 &nbsp;
 
-### 3.3 Random Forests
+### 3.3 Random Forest
 
-The Random Forests will be trained, predicted and tested as follows:
+The Random Forest will be trained, predicted and tested as follows:
 
-```{r train_rf, cache=FALSE, results="hide"}
-model_rf <- train(classe ~ ., data = samples_train, trControl = train_control, method = "rf")
+```{r train_rf, cache=TRUE, results="hide"}
+model_rf <- train(classe ~ ., data = samples_train, trControl = train_control, tuneLength = 5, method = "rf")
 predict_rf <- predict(model_rf, newdata = samples_test)
 cm_rf <- confusionMatrix(predict_rf, factor(samples_test$classe))
 ```
@@ -150,7 +143,7 @@ cm_rf
 ### 3.4 Comparison of the Model's Accuracy
 
 ```{r compare_results}
-model_accuracy <- data.frame(Model = c("Decision Trees", "Gradient Boosting Machines", "Random Forests"), 
+model_accuracy <- data.frame(Model = c("Decision Tree", "Generalized Boosted Regression Model", "Random Forest"), 
                              Accuracy = rbind(cm_dt$overall[1], cm_gbm$overall[1], cm_rf$overall[1]))
 print(model_accuracy)
 ```
@@ -161,6 +154,10 @@ print(model_accuracy)
 
 ## 4. Conclusion
 
+According to the accuracy of the confusion matrices between Decision Tree, Generalized Boosted Regression Model and Random Forest, it is found that the accuracy of Random Forest is the highest which is 0.9967 (95% CI: (0.9947, 0.9981)) and corresponding expected out-of-samples error is 0.0033. Therefore, Random Forest will be chosen as the prediction model.
+
+With using Random Forests, the prediction of the given testing dataset **pml-testing.csv** is
+
 ```{r predict_validate_dataset}
 predict_validate <- predict(model_rf, newdata = data_validate)
 predict_validate
@@ -168,3 +165,27 @@ predict_validate
 
 &nbsp;
 &nbsp;
+
+## 5. Appendix
+
+### 5.1 Plot for Decision Tree
+
+```{r plot_model_dt}
+plot(model_dt)
+```
+
+&nbsp;
+
+### 5.2 Plot for Generalized Boosted Regression Model
+
+```{r plot_model_gbm}
+plot(model_gbm)
+```
+
+&nbsp;
+
+### 5.3 Plot for Random Forest
+
+```{r plot_model_rf}
+plot(model_rf)
+```
